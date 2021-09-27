@@ -66,10 +66,8 @@
             flymake-proc-allowed-file-name-masks))
 
 (setq flymake-proc-err-line-patterns
-      (append
-       '(("\\(.+\\)(\\([0-9]+\\),\\([0-9]+\\)): \\(error TS.+\\)" 1 2 3 4))
-       'flymake-proc-err-line-patterns
-       ))
+      (cons '("\\(.+\\)(\\([0-9]+\\),\\([0-9]+\\)): \\(error TS.+\\)" 1 2 3 4)
+            flymake-proc-err-line-patterns))
 
 (provide 'flymake-typescript)
 ;;; flymake-typescript.el ends here
