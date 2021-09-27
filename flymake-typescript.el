@@ -55,7 +55,8 @@
          (local-file (file-relative-name
                       temp-file
                       (file-name-directory buffer-file-name))))
-    (list flymake-typescript-executable-name (list "--noEmit" "--pretty" "false" local-file))
+    (list flymake-typescript-executable-name
+          (list "--noEmit" "--pretty" "false" "--skipLibCheck" "true" local-file))
     ))
 
 (setq flymake-proc-allowed-file-name-masks
