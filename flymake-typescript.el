@@ -45,6 +45,8 @@
    (if (string= (expand-file-name project_dir) "/") nil project_dir)
    ))
 
+(setq-default flymake-typescript-tsc-args (list "--noEmit" "--pretty" "false" "-t" "es2020" "-m" "es2020"))
+
 (defun flymake-proc-typescript-init ()
   "Typescript flymake initialization."
   (let* ((project-dir (get-node-project-dir))
@@ -56,8 +58,8 @@
                       temp-file
                       (file-name-directory buffer-file-name))))
     (list flymake-typescript-executable-name
-          (list "--noEmit" "--pretty" "false" "--skipLibCheck" "true" "-t" "es2020" "-m" "es2020" local-file))
-    ))
+          (nconc flymake-typescript-tsc-args (list local-file))
+          )))
 
 (setq flymake-proc-allowed-file-name-masks
       (cons '(".+\\.ts$"
