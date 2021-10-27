@@ -45,7 +45,67 @@
    (if (string= (expand-file-name project_dir) "/") nil project_dir)
    ))
 
-(setq-default flymake-typescript-tsc-args (list "--noEmit" "--pretty" "false" "-t" "es2020" "-m" "es2020"))
+(setq-default flymake-typescript-tsc-args (list "--noEmit" "--pretty" "false"))
+
+
+;; Override flymake's annoying panic-on-error
+(defun flymake-proc--process-sentinel (proc _event)
+  "Sentinel for syntax check buffers."
+  (let (debug
+        (pid (process-id proc))
+        (source-buffer (process-buffer proc)))
+    (unwind-protect
+        (when (buffer-live-p source-buffer)
+          (with-current-buffer source-buffer
+            (cond ((process-get proc 'flymake-proc--obsolete)
+                   (flymake-log 3 "proc %s considered obsolete"
+                                pid))
+                  ((process-get proc 'flymake-proc--interrupted)
+                   (flymake-log 3 "proc %s interrupted by user"
+                                pid))
+                  ((not (process-live-p proc))
+                   (let* ((exit-status   (process-exit-status proc))
+                          (command       (process-command proc))
+                          (diagnostics (process-get
+                                        proc
+                                        'flymake-proc--collected-diagnostics)))
+                     (flymake-log 2 "process %d exited with code %d"
+                                  pid exit-status)
+                     (cond
+                      ((equal 0 exit-status)
+                       (funcall flymake-proc--report-fn diagnostics
+                                :explanation (format "a gift from %s" (process-id proc))
+                                ))
+                      (diagnostics
+                       ;; non-zero exit but some diagnostics is quite
+                       ;; normal...
+                       (funcall flymake-proc--report-fn diagnostics
+                                :explanation (format "a gift from %s" (process-id proc))))
+                      ((null diagnostics)
+                       ;; ...but no diagnostics is strange, but it could just be that there is no error in this
+                       ;; specific file.
+                       (funcall flymake-proc--report-fn diagnostics
+                                :explanation (format "a gift from %s" (process-id proc))
+                                ))))))))
+      (let ((output-buffer (process-get proc 'flymake-proc--output-buffer)))
+        (cond (debug
+               (flymake-log 3 "Output buffer %s kept alive for debugging"
+                            output-buffer))
+              (t
+               (when (buffer-live-p source-buffer)
+                 (with-current-buffer source-buffer
+                   (let ((cleanup-f (flymake-proc--get-cleanup-function
+                                     (buffer-file-name))))
+                     (flymake-log 3 "cleaning up using %s" cleanup-f)
+                     ;; Make cleanup-f see the temporary file names
+                     ;; created by its corresponding init function
+                     ;; (bug#31981).
+                     (let ((flymake-proc--temp-source-file-name
+                            (process-get proc 'flymake-proc--temp-source-file-name))
+                           (flymake-proc--temp-master-file-name
+                            (process-get proc 'flymake-proc--temp-master-file-name)))
+                       (funcall cleanup-f)))))
+               (kill-buffer output-buffer)))))))
 
 (defun flymake-proc-typescript-init ()
   "Typescript flymake initialization."
@@ -54,11 +114,13 @@
           (concat (expand-file-name project-dir) "/node_modules/typescript/bin/tsc"))
          (temp-file (flymake-proc-init-create-temp-buffer-copy
                      'flymake-proc-create-temp-inplace))
-         (local-file (file-relative-name
-                      temp-file
-                      (file-name-directory buffer-file-name))))
+         ;; (local-file (file-relative-name
+         ;;             temp-file
+         ;;             (file-name-directory buffer-file-name)))
+         ;; todo: write local file name in a temporary tsconfig
+         )
     (list flymake-typescript-executable-name
-          (nconc flymake-typescript-tsc-args (list local-file))
+          (nconc flymake-typescript-tsc-args)
           )))
 
 (setq flymake-proc-allowed-file-name-masks
