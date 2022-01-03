@@ -1,3 +1,8 @@
+UPDATE: This was a fun experiment, but I strongly suggest lsp-mode, which works incredibly well with typescript. I wished I had discovered this earlier:
+
+https://emacs-lsp.github.io/lsp-mode/page/lsp-typescript/
+
+
 # flymake-typescript
 
 This is a very basic flymake backend for typescript. It will find the tsc executable in the current project.
